@@ -21,7 +21,8 @@ const firebaseConfig = {
 // Initialize
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storage = getStorage(app, "gs://customer-invoice-registration.firebasestorage.app");
+
 
 
 // ------------------------
@@ -42,9 +43,9 @@ if (form) {
 
         try {
             const fileName = `${invoiceId}_${Date.now()}`;
-            const storageRef = ref(storage, "invoices/" + fileName);
+           const storageRef = ref(storage, `invoices/${fileName}`);
+await uploadBytes(storageRef, file);
 
-            await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(storageRef);
 
             await addDoc(collection(db, "invoices"), {
@@ -97,5 +98,6 @@ if (tableBody) {
 
     loadInvoices();
 }
+
 
 
