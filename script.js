@@ -9,13 +9,14 @@ import {
 
 // Firebase config
 const firebaseConfig = {
-    apiKey: "AIzaSyBFTTYrRyIKSt6xAmYtn7omwwKxa_Pd4Ww",
-    authDomain: "customer-invoice-registration.firebaseapp.com",
-    projectId: "customer-invoice-registration",
-    storageBucket: "customer-invoice-registration.appspot.com",
-    messagingSenderId: "340077803058",
-    appId: "1:340077803058:web:5deaf000d8a4898b8f6e2b"
+  apiKey: "AIzaSyBFTTYrRyIKSt6xAmYtn7omwwKxa_Pd4Ww",
+  authDomain: "customer-invoice-registration.firebaseapp.com",
+  projectId: "customer-invoice-registration",
+  storageBucket: "customer-invoice-registration.firebasestorage.app",
+  messagingSenderId: "340077803058",
+  appId: "1:340077803058:web:5deaf000d8a4898b8f6e2b"
 };
+
 
 // Initialize
 const app = initializeApp(firebaseConfig);
@@ -96,3 +97,4 @@ if (tableBody) {
 
     loadInvoices();
 }
+
