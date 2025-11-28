@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBFTTYrRyIKSt6xAmYtn7omwwKxa_Pd4Ww",
   authDomain: "customer-invoice-registration.firebaseapp.com",
   projectId: "customer-invoice-registration",
-  storageBucket: "customer-invoice-registration.firebasestorage.app",
+  storageBucket: "customer-invoice-uploads.appspot.com",
   messagingSenderId: "340077803058",
   appId: "1:340077803058:web:5deaf000d8a4898b8f6e2b"
 };
@@ -97,4 +97,5 @@ if (tableBody) {
 
     loadInvoices();
 }
+
 
