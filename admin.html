@@ -1,33 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Admin Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <title>Admin — Submitted Invoices</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<div class="card admin-card">
+<div class="admin-wrapper">
+  <h1>Admin — Submitted Invoices</h1>
+  <p class="subtitle">Latest invoices submitted from the public form.</p>
 
-    <h1 class="title">Invoice Dashboard</h1>
-    <p class="subtitle">All submitted invoices appear here.</p>
-
-    <table id="invoiceTable">
-        <thead>
-            <tr>
-                <th>Full Name</th>
-                <th>Phone</th>
-                <th>Invoice ID</th>
-                <th>Image</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
+  <div class="table-container">
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Created At</th>
+          <th>Full Name</th>
+          <th>Phone</th>
+          <th>Invoice ID</th>
+          <th>Image</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceTable">
+        <!-- rows will be filled by script.js -->
+      </tbody>
     </table>
+  </div>
 
+  <p id="adminStatus" class="status-text"></p>
 </div>
 
-<script type="module" src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
