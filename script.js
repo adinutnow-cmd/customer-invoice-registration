@@ -1,103 +1,173 @@
-// Firebase imports
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import {
-    getFirestore, collection, addDoc, getDocs, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import {
-    getStorage, ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+// ----------------- Supabase Config -----------------
+const SUPABASE_URL = "https://ldtomlnitalgcubjfatc.supabase.co"; // عدّلها إذا لزم
+const SUPABASE_KEY = "PUT_YOUR_PUBLISHABLE_KEY_HERE";            // حط الـ publishable key هون
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyBFTTYrRyIKSt6xAmYtn7omwwKxa_Pd4Ww",
-  authDomain: "customer-invoice-registration.firebaseapp.com",
-  projectId: "customer-invoice-registration",
-  storageBucket: "customer-invoice-uploads.appspot.com",
-  messagingSenderId: "340077803058",
-  appId: "1:340077803058:web:5deaf000d8a4898b8f6e2b"
-};
+// supabase global object جاي من سكربت CDN
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+console.log("Supabase client created");
 
-// Initialize
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app, "gs://customer-invoice-registration.firebasestorage.app");
-
-
-
-// ------------------------
-// USER PAGE (index.html)
-// ------------------------
-const form = document.getElementById("invoiceForm");
-
-if (form) {
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const fullName = document.getElementById("fullName").value;
-        const phone = document.getElementById("phone").value;
-        const invoiceId = document.getElementById("invoiceId").value;
-        const file = document.getElementById("invoiceImage").files[0];
-
-        const statusEl = document.getElementById("status");
-
-        try {
-            const fileName = `${invoiceId}_${Date.now()}`;
-           const storageRef = ref(storage, `invoices/${fileName}`);
-await uploadBytes(storageRef, file);
-
-            const downloadURL = await getDownloadURL(storageRef);
-
-            await addDoc(collection(db, "invoices"), {
-                fullname: fullName,
-                phone: phone,
-                invoiceId: invoiceId,
-                imageUrl: downloadURL,
-                createdAt: serverTimestamp()
-            });
-
-            statusEl.textContent = "Invoice submitted successfully.";
-            statusEl.style.color = "green";
-            form.reset();
-
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = "Error submitting invoice.";
-            statusEl.style.color = "red";
-        }
-    });
+// Helper لعرض الرسائل
+function setStatus(elementId, message, type = "info") {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("status-ok", "status-error");
+  if (type === "ok") el.classList.add("status-ok");
+  if (type === "error") el.classList.add("status-error");
 }
 
+// نضمن إن الكود ما يشتغل إلا بعد تحميل الصفحة
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded");
 
-// ------------------------
-// ADMIN PAGE (admin.html)
-// ------------------------
-const tableBody = document.querySelector("#invoiceTable tbody");
+  const form = document.getElementById("invoiceForm");
+  if (form) {
+    console.log("Invoice form found, attaching submit handler");
+    form.addEventListener("submit", handleInvoiceSubmit);
+  }
 
-if (tableBody) {
-    async function loadInvoices() {
-        const snap = await getDocs(collection(db, "invoices"));
-        snap.forEach((doc) => {
-            const data = doc.data();
+  // لو صفحة أدمن، هون بيكمّل
+  loadAdminTable();
+});
 
-            const row = `
-                <tr>
-                    <td>${data.fullname}</td>
-                    <td>${data.phone}</td>
-                    <td>${data.invoiceId}</td>
-                    <td><a href="${data.imageUrl}" target="_blank">
-                        <img src="${data.imageUrl}">
-                    </a></td>
-                    <td>${data.createdAt?.toDate?.() || ""}</td>
-                </tr>
-            `;
+// ----------------- Submit Invoice (index.html) -----------------
+async function handleInvoiceSubmit(e) {
+  e.preventDefault();
 
-            tableBody.innerHTML += row;
-        });
+  const submitBtn = document.getElementById("submitBtn");
+  const full_name = document.getElementById("full_name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const invoice_id = document.getElementById("invoice_id").value.trim();
+  const imageInput = document.getElementById("image");
+  const imageFile = imageInput.files[0];
+
+  if (!imageFile) {
+    setStatus("status", "Please upload an invoice image.", "error");
+    return;
+  }
+
+  try {
+    submitBtn.disabled = true;
+    setStatus("status", "Uploading image...", "info");
+    console.log("Starting upload...");
+
+    const fileName = `${Date.now()}_${imageFile.name}`;
+
+    // 1) رفع الصورة على bucket invoice-images
+    const { data: uploadData, error: uploadError } = await supabaseClient
+      .storage
+      .from("invoice-images")
+      .upload(fileName, imageFile);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      setStatus("status", "Upload error: " + uploadError.message, "error");
+      submitBtn.disabled = false;
+      return;
     }
 
-    loadInvoices();
+    console.log("Upload success:", uploadData);
+
+    // 2) جلب الرابط العلني للصورة
+    const { data: publicData } = supabaseClient
+      .storage
+      .from("invoice-images")
+      .getPublicUrl(fileName);
+
+    const imageUrl = publicData.publicUrl;
+    console.log("Public URL:", imageUrl);
+
+    // 3) إدخال الصف في جدول invoices
+    setStatus("status", "Saving invoice data...", "info");
+
+    const { data, error } = await supabaseClient
+      .from("invoices")
+      .insert([
+        {
+          full_name,
+          phone,
+          invoice_id,
+          image_url: imageUrl,
+          status: "pending",
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error("DB insert error:", error);
+      setStatus("status", "Database error: " + error.message, "error");
+    } else {
+      console.log("Insert success:", data);
+      setStatus("status", "Invoice submitted successfully ✔", "ok");
+      e.target.reset();
+    }
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    setStatus("status", "Unexpected error, please try again later.", "error");
+  } finally {
+    submitBtn.disabled = false;
+  }
 }
 
+// ----------------- Admin Page (load data) -----------------
+async function loadAdminTable() {
+  const tableBody = document.getElementById("invoiceTable");
+  if (!tableBody) {
+    // مش صفحة الأدمن، طنّش
+    return;
+  }
 
+  console.log("Loading admin table...");
 
+  try {
+    const { data, error } = await supabaseClient
+      .from("invoices")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (error) {
+      console.error("Admin load error:", error);
+      setStatus("adminStatus", "Error loading invoices: " + error.message, "error");
+      return;
+    }
+
+    console.log("Invoices loaded:", data);
+
+    tableBody.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7">No invoices yet.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${row.id}</td>
+        <td>${row.created_at ? new Date(row.created_at).toLocaleString() : ""}</td>
+        <td>${row.full_name ?? ""}</td>
+        <td>${row.phone ?? ""}</td>
+        <td>${row.invoice_id ?? ""}</td>
+        <td>
+          ${row.image_url ? `<a href="${row.image_url}" target="_blank">
+            <img src="${row.image_url}" class="invoice-image" />
+          </a>` : ""}
+        </td>
+        <td class="status-${row.status}">${row.status}</td>
+      `;
+
+      tableBody.appendChild(tr);
+    });
+
+    setStatus("adminStatus", "Invoices loaded.", "ok");
+  } catch (err) {
+    console.error("Admin unexpected error:", err);
+    setStatus("adminStatus", "Unexpected error loading invoices.", "error");
+  }
+}
